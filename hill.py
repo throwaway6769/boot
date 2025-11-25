@@ -1,14 +1,15 @@
 import numpy as np
+import math
 
 # ---------------- HELPER FUNCTIONS ----------------
 
 # Convert a character to number (A=0 ... Z=25)
 def char_to_num(c):
-    return ord(c) - ord('A')
+    return ord(c.upper()) - ord('A')
 
 # Convert number to character
 def num_to_char(n):
-    return chr(n + ord('A'))
+    return chr(int(n) + ord('A'))
 
 # Compute modular inverse of a number mod 26
 def mod_inverse(a, m=26):
@@ -51,37 +52,51 @@ def hill_encrypt(plaintext, key):
 
     return ciphertext
 
-
 # ---------------- HILL DECRYPTION ----------------
 def hill_decrypt(ciphertext, key):
+    # Pad ciphertext if odd length
+    if len(ciphertext) % 2 != 0:
+        print("Warning: Ciphertext length is odd. Adding 'X' for decryption.")
+        ciphertext += 'X'
+
     inv_key = invert_key_matrix(key)
     if inv_key is None:
         return "ERROR: Key matrix not invertible modulo 26!"
 
     plaintext = ""
     for i in range(0, len(ciphertext), 2):
-        block = np.array([[char_to_num(ciphertext[i])],
-                          [char_to_num(ciphertext[i+1])]])
+        first = char_to_num(ciphertext[i])
+        second = char_to_num(ciphertext[i+1])
+        block = np.array([[first], [second]])
         result = np.dot(inv_key, block) % 26
         plaintext += num_to_char(result[0][0]) + num_to_char(result[1][0])
 
     return plaintext
 
-
 # ---------------- MAIN MENU ----------------
-
 def main():
     print("==== HILL CIPHER (2x2) ====")
 
-    # Take key matrix input
-    print("\nEnter 2x2 Key Matrix (only integers):")
-    a = int(input("Enter a11: "))
-    b = int(input("Enter a12: "))
-    c = int(input("Enter a21: "))
-    d = int(input("Enter a22: "))
+    # Take key matrix input with validation
+    while True:
+        try:
+            print("\nEnter 2x2 Key Matrix (only integers):")
+            a = int(input("Enter a11: "))
+            b = int(input("Enter a12: "))
+            c = int(input("Enter a21: "))
+            d = int(input("Enter a22: "))
+            key = np.array([[a, b], [c, d]])
 
-    key = np.array([[a, b],
-                    [c, d]])
+            # Check determinant coprime with 26
+            det = int(np.round(np.linalg.det(key))) % 26
+            if math.gcd(det, 26) != 1:
+                print("ERROR: Key matrix determinant not coprime with 26! Enter a valid key.\n")
+                continue
+            break
+        except ValueError:
+            print("Invalid input! Please enter integers only.\n")
+
+    print("\nKey Matrix is valid and ready for use!")
 
     while True:
         print("\n-------- MENU --------")
@@ -94,11 +109,13 @@ def main():
 
         if choice == "1":
             pt = input("Enter plaintext: ").upper()
-            print("Ciphertext:", hill_encrypt(pt, key))
+            ct = hill_encrypt(pt, key)
+            print("Ciphertext:", ct)
 
         elif choice == "2":
             ct = input("Enter ciphertext: ").upper()
-            print("Plaintext:", hill_decrypt(ct, key))
+            pt = hill_decrypt(ct, key)
+            print("Plaintext:", pt)
 
         elif choice == "3":
             print("Exiting program...")
